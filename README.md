@@ -1,7 +1,7 @@
 Docker Commands
 ===============
 
-###Containers
+### Containers
 
 ```shell
 docker build -t friendlyname .  # Create image using this directory's Dockerfile
@@ -22,7 +22,7 @@ docker push username/repository:tag            # Upload tagged image to registry
 docker run username/repository:tag                   # Run image from a registry
 ```
 
-###Services
+### Services
 ```shell
 docker stack ls              # List all running applications on this Docker host
 docker stack deploy -c <composefile> <appname>  # Run the specified Compose file; depends on docker-compose.yml
