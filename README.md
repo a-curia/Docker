@@ -339,9 +339,53 @@ inject key/value is they work everywhere, on every OS and config
 
  
 
- 
+### Container Lifetime and Persistent Data
+
+-   containers are usually immutable and ephemeral
+
+-   “immutable infrastructure”: only re-deloy containers, never change
+
+-   this is the ideal scenario, but what about databases, or unique data?
+
+-   a container should not contain the unique data; Docker gives us features to
+    ensure these “separation of concerns”
+
+-   Docker has two solutions to this problem: Persistent Volumes and Bind Mounts
+
+    -   Persistent Volumes - make special location outside of container UFS
+
+    -   Bind Mount - link container path to host path
 
  
+
+### Persistent Data : Volumes
+
+docker volume prune - cleanup unused volumes
+
+docker volume ls
+
+docker volume inspect 3424fgjdskf
+
+named volumes - friendly way to assign vols to containers
+
+docker volume create - required to do this before “docker run” to use custom
+drivers and labels
+
+ 
+
+### Persistent Data : Bind Mounting
+
+-   maps a host file or directory to a container file or directory
+
+-   basically just two locations pointing to the same file(s)
+
+-   again, skips UFS, and host files overwrite any in container
+
+-   can’t use in Dockerfile, must be at **container run**
+
+-   ... run -v /users/adrianc/stuff:/path/container
+
+-    
 
  
 
