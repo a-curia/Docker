@@ -305,7 +305,7 @@ docker container ls
 
 -   a container is just a single read/write layer on top of image
 
--   **docker image history** and **inspect **commands can teach us
+-   **docker image history** and **inspect** commands can teach us
 
  
 
@@ -385,17 +385,477 @@ drivers and labels
 
 -   ... run -v /users/adrianc/stuff:/path/container
 
+ 
+
+ 
+
+### Docker Compose
+
+-   why: configure relationships between containers
+
+-   why: save our docker container run settings in easy-to-read file
+
+-   why: create one-liner developer environment startups
+
+-   comprised of 2 separate but related things
+
+-   YAML-formated file that describes our solution options for:
+
+    -   containers
+
+    -   networks
+
+    -   volumes
+
+-   A CLI tool **docker-compose** used for local dev/test automation with those
+    YAML files
+
+ 
+
+ 
+
+docker-compose.yaml
+
+-   YAML file can be used with **docker-compose** command for local docker
+    automation or...
+
+-   with **docker** directly in production with Swarm(as of v1.13)
+
+-   docker-compose --help
+
+-   **docker-compose.yml** is default filename, but any can be used with
+    **docker-compose -f**
+
+ 
+
+docker-compose CLI
+
+-   CLI tool comes with Docker for Windows/Mac, but separate download for Linux
+
+-   not a production-grade tool but ideal for local development and test
+
+-   two most common command are
+
+    -   docker-compose up \#setup volumes.networks and start all containers
+
+    -   docker-compose down \#stop all containers and remove cont/vol/net
+
+-   if all your projects had a Dockerfile and docker-compose.yml then “new
+    developer onboarding” would be:
+
+    -   git clone github.com/some/software
+
+    -   docker-compose up
+
+ 
+
+**INSTALL docker from script :** curl https://get.docker.com \| bash
+
+ 
+
+ 
+
+ 
+
+### Using Compose to Build
+
+-   compose can also build your custom images
+
+-   will build them with docker-compose up if not found in cache
+
+-   also rebuild with docker-compose build
+
+-   great for complex builds that have lots of vars or build args
+
+ 
+
+ 
+
+### Containers Everywhere = New Problems
+
+-   how do we automate container lifecycle?
+
+-   how can we easily scale out/in/up/down?
+
+-   how can we ensure our containers are re-created if they fail?
+
+-   how can we replace containers without downtime(blue/green deploy)?
+
+-   how can we control/track where containers get started?
+
+-   how can we create cross-node virtual-networks?
+
+-   how can we ensure only trusted servers run our containers?
+
+-   how can we store secrets, keys, passwords and get them to the right
+    container(and only that container)?
+
+ 
+
+### Swarm Mode : Built=In Orchestration
+
+-   is a clustering solution built inside Docker
+
+-   SwarmKit toolkit
+
+-   Stacks and Secrets
+
+-   not enabled by default, new commands once enabled
+
+    -   docker swarm
+
+    -   docker node
+
+    -   docker service
+
+    -   docker stack
+
+    -   docker secret
+
+Manager nodes - have a db on them called the RAFT database
+
+\- stores the configuration and gives them all the information they need to have
+to be the authority inside Swarm
+
+-   TLS and CertificateAuthority
+
+-   all the manager nodes keep copy of that db and certs
+
+Worker nodes - communicate using control plain
+
+ 
+
+ 
+
+### Docker Swarm
+
+-   **docker info** to see if Swarm is enabled or not
+
+-   docker swarm init \#initialize docker swarm
+
+-   docker swarm init will do:
+
+    -   Lots of PKI and security automation
+
+        -   Root Signing Certificate created for our Swarm
+
+        -   Certificate is issued for first Manager node
+
+        -   Join tokens are created
+
+    -   Raft database created to store root CS, configs and secretes
+
+        -   Raft is a protocol that assures consistency in a clod we cannot
+            guarantee that anyone thing will lbe available for any moment in
+            time
+
+        -   Encrypt by default on disk(1.13+)
+
+        -   No need for another key/value system to hold orchestration/secrets
+
+        -   Replicates logs amongst Managers via mutual TLS in “control plane”
+
+-   docker services: in a swarm, replaces the docker run
+
+-   docker service create alpine ping 8.8.8.8
+
+-   docker service list
+
+-   docker service ps SERVICE_NAME/ID \#display tasks of the service
+
+-   docker container ls \#this still works but will display some specific names
+
+-   docker service update ID --replicas 3
+
+-   docker update vs docker service update
+
+-   rolling update - the blue/green pattern
+
+-   docker container rm -f \<name\>.1.\<ID\>
+
+-   all these actions are put in the queue so there is rollback possibilities
+    and failure mitigation
+
+-   docker service rm service_name
+
+-   docker swarm init --advertise-addr \<public IP address\>
+
+ 
+
+-   docker node update --role manager node_name_2
+
+-   docker swarm join-token manager
+
+ 
+
+### Overlay Multi-Host Networking
+
+-   just chose **--driver overlay** when creating network
+
+-   for container-to-container traffic inside a single Swarm
+
+-   optional IPSec(AES) encryption on network creation
+
+-   each service and be connected to multiple networks(frontend/backend)
+
+-   eg:
+
+    -   docker network create --driver overlay mydrupal
+
+    -   docker network ls
+
+    -   docker service create --name psql --network mydrupal -e
+        POSTGRES_PASSWORD=mypass posgres
+
+    -   docker service ls
+
+    -   docker service ps psql
+
+    -   docker container logs psql
+
+    -   docker service create --name drupal --network mydrupal -p 80:80 drupal
+
+    -   watch docker service ls
+
+    -   docker service inspect drupal
+
+ 
+
+### Routing Mesh
+
+-   routes ingress (incoming) packets for a Service to proper Task
+
+-   spans all nodes in Swarm
+
+-   uses IPVS from Linux Kernel
+
+-   load balances Swarm Services across their Tasks
+
+-   two ways this works
+
+    -   container-to-container in a Overlay network(uses VIP)
+
+    -   external traffic incoming to published ports(all nodes listen)
+
+-   this is stateless load balancing(no session cookies in you app)
+
+-   this LS is at OSI Layer 3(TCP), not Layer4(DNS)(not allowing multiple
+    websites on same swarm, same port... you need something on top)
+
+-   both limitation can be overcome with
+
+    -   Nginx(statefull LB) or HAProxy LB proxy, or Docker Enterprise Edition,
+        which comes with build-in L4 web proxy
+
+ 
+
+Create Multi-Service App
+
+ 
+
+### Docker Swarm
+
+-   machines running Docker 1.12 or \>
+
+-   they are in the same subnet
+
+-   open ports 2377, 4789 and 7946
+
 -    
 
  
 
+**ifconfig eth0: 10.1.42.101**
+
+**docker swarm init --listen-addr 10.1.42.101:2377**
+
+To\*\* add a worker\*\* to this swarm, run the following command:
+
+docker swarm join --token
+SWMTKN-1-5xhlapkhzr9j2jp20jdn20410wze2z41h219hscsb7saa3e6rs-a9j45v2e0xkvcl250je4i187m
+10.1.42.101:2377
+
+To **add a manager** to this swarm, run 'docker swarm join-token manager' and
+follow the instructions.
+
  
+
+docker node ls
+
+docker service create --name ping00 alpine swarm-00
+
+docker service create --replicas 5 nginx
+
+docker service ls
+
+docker service tasks ping00
+
+docker logs -f CONTAINER_ID
+
+docker service rm SERVICE_NAME
+
+ 
+
+docker service create --name website --publish 80:80 my_dockerhub_image
+
+docker inspect website --pretty
+
+docker service tasks website
+
+ 
+
+docker service update --replicas 10
+
+ 
+
+### Dockerfile - Build Image
+
+ 
+
+FROM openjdk:8-jre-alpine
+
+MAINTAINER dbbyte.com
+
+ADD target/app-myskill.jar myskill.jar
+
+EXPOSE 8086
+
+ENTRYPOINT ["java","-jar","/myskill.jar"]
+
+ 
+
+docker build . -t myskill
 
  
 
  
 
+### VotingApp
+
+docker network create -d overlay backend
+
+docker network create -d overlay frontend
+
  
+
+\# docker service create --name vote -p 80:80 --network frontend --replicas 2
+dockersamples/examplevotingapp_vote:before
+
+\# docker service create --name redis --network frontend --replicas 1 redis:3.2
+
+\# docker service create --name worker --network frontend --network backend
+dockersamples/examplevotingapp_worker
+
+\-------
+
+\# docker service create --name db --network backend --mount
+type=volume,source=db-data,target=/var/lib/postgresql/data postgres:9.4
+
+\# docker service create --name result --network backend -p 5001:80
+dockersamples/examplevotingapp_result:before
+
+ 
+
+### Stacks: Production Grade Compose
+
+-   in 1.13 Docker adds a new layer of abstraction to Swarm called Stacks
+
+-   Stacks accept Compose files as their declarative definition for services,
+    networks, and volumes
+
+-   we use **docker stack deploy** rather then docker service create
+
+-   Stacks manages all those objects for us, including overlay network per
+    stack. Adds stack name to start of their name
+
+-   new **deploy:** key in Compose file. Can’t do **build:**
+
+-   building should be done  by CI, not in the production swarm
+
+-   Stack will only pull those images and deploy them with the deploy options
+
+-   Compose now ignores **deploy:**, Swarm ignores **build:**
+
+-   **docker-compose** cli not needed on Swarm server
+
+-   Stack is for one swarm; it cannot do many Swarms
+
+docker stack deploy -c example-voting-app-stack.yml voteapp
+
+docker stack ps voteapp \#shows the tasks; containers names are very long
+
+docker stack services voteapp
+
+\#change the number of replicas in the file and then
+
+docker stack deploy -c example-voting-app-stack.yml voteapp
+
+ 
+
+### Swarm Secrets
+
+-   easiest “secure” solution for storing secrets in Swarm
+
+-   encrypted on disk, encrypted in transit and only available to the places
+    where needs to be
+
+-   what is a Secret?
+
+    -   usernames and password
+
+    -   TLS certificates and keys
+
+    -   SSH keys
+
+    -   any data you would prefer not be “on front page of news”
+
+-   supports generic strings or binary content up to 500kb in size
+
+-   doesn't require apps to be rewritten
+
+-   as of Docker 1.13.0 Swarm Raft DB is encrypted on disk by default
+
+-   only stored on disk on Manager nodes
+
+-   default is Managers and Workers “control place” is TLS + Mutual Auth
+
+-   Secrets are first stored in Swarm, then assigned to a Service/s
+
+-   only containers in assigned Service/s can see them
+
+-   they look like files in container but are actually in-memory fs
+
+-   /run/secrets/\<secret_name\> or /run/secrets/\<secret_alias\>
+
+-   local docker-compose can use file-based secrets, but not secure
+
+-   Secrets depend on Swarm but can be faked as above point
+
+-   docker secret create plsql_user plsql_user.txt OR
+
+-   echo “myDBpassWORD” \| docker secret create psql_pass -
+
+-   docker secret ls
+
+-   docker secret inspect psql_user
+
+-   docker service create --name psql --secret psql_user --secret psql_pass -e
+    POSTGRES_PASSWORD_FILE=/run/secrets/psql_pass -e
+    POSTGRES_USER_FILE=/run/secrets/psql_user postgres
+
+-   docker service update --secret-rm \# this will not work for db because will
+    restart container
+
+ 
+
+Secrets with Stacks
+
+-   docker service create --name search --replicas 3 -p 9200:9200
+    elasticsearch:2
+
+-   docker stack deploy -c docker-compose.yml mydb
+
+-    
 
  
 
